@@ -64,6 +64,10 @@ const proxyEvent = (name, detail = {}) => {
 };
 
 const decorateChirp = (chirp) => {
+  if (!chirp) {
+    return undefined;
+  }
+
   chirp.chirpType = chirp.chirpType;
   chirp.action = chirp.action;
   return chirp;
@@ -193,7 +197,12 @@ document.addEventListener('DOMNodeInserted', (ev) => {
   // If the target of the event contains mediatable then we are inside the media modal
   if (target.classList && target.classList.contains('js-mediatable')) {
     const chirpKey = target.querySelector('[data-key]').getAttribute('data-key');
-    const colKey = document.querySelector(`[data-column] [data-key="${chirpKey}"]`).closest('[data-column]').getAttribute('data-column');
+    const chirpKeyEl = document.querySelector(`[data-column] [data-key="${chirpKey}"]`);
+    const colKey = chirpKeyEl && chirpKeyEl.closest('[data-column]').getAttribute('data-column');
+
+    if (!colKey) {
+      return;
+    }
 
     const chirp = TD.controller.columnManager.get(colKey).updateIndex[chirpKey];
 
@@ -257,7 +266,7 @@ document.addEventListener('DOMNodeInserted', (ev) => {
 $(document).on('uiVisibleChirps', (ev, data) => {
   const { chirpsData, columnKey } = data;
   const isThereGifs = chirpsData.filter(chirp => {
-    const hasGif = chirp.chirp._hasAnimatedGif;
+    const hasGif = chirp.chirp && chirp.chirp._hasAnimatedGif;
     const el = chirp.$elem[0];
     const isPaused = el.querySelector('video') && !el.querySelector('video').paused;
 
@@ -324,6 +333,35 @@ $(document).keydown((ev) => {
   if ($('#open-modal [btd-custom-modal]').length && ev.keyCode === 27) {
     closeCustomModal();
     return;
+  }
+});
+
+document.addEventListener('paste', ev => {
+  if (ev.clipboardData) {
+    const items = ev.clipboardData.items;
+
+    if (!items) {
+      return;
+    }
+
+    const files = [];
+
+    [...items].forEach(item => {
+      if (item.type.indexOf('image') < 0) {
+        return;
+      }
+      const blob = item.getAsFile();
+
+      files.push(blob);
+    });
+
+    if (files.length === 0) {
+      return;
+    }
+
+    $(document).trigger('uiFilesAdded', {
+      files,
+    });
   }
 });
 
